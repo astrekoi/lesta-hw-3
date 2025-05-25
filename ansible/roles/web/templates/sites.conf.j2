@@ -15,9 +15,10 @@ server {
 server {
     listen 443 ssl;
     server_name {{ domain }};
-    
-    ssl_certificate /etc/letsencrypt/live/{{ domain }}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{{ domain }}/privkey.pem;
+
+    ssl_certificate /etc/ssl/certs/{{ domain }}.crt;
+    ssl_certificate_key /etc/ssl/private/{{ domain }}.key;
+    include /etc/nginx/snippets/ssl_params.conf;
 
     root /var/www/{{ domain.split('.')[0] }};
     index index.html;

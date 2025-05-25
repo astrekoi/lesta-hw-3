@@ -17,6 +17,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ansible
 
+      - name: Install community.crypto collection
+        run: ansible-galaxy collection install community.crypto
+
       - name: Prepare SSH key
         run: |
           mkdir -p ~/.ssh

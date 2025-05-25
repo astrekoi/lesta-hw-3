@@ -87,40 +87,65 @@
 
 - name: SSL management
   block:
-    - name: Install certbot package
+    - name: Install Python OpenSSL dependencies
       ansible.builtin.apt:
-        name:
-          - certbot
-          - python3-certbot-nginx
+        name: python3-openssl
         state: present
         update_cache: yes
-      tags: certbot
+      tags: ssl
+      become: yes
 
-    - name: Obtain SSL certificates
-      ansible.builtin.command: "certbot --nginx -d {{ domains }} --non-interactive --agree-tos -m {{ certbot_email }}"
-      vars:
-        domains: "{{ nginx_domains | join(',') }}"
-      notify: Reload Nginx
-      tags: certbot
+    - name: Generate private key
+      community.crypto.openssl_privatekey:
+        path: /etc/ssl/private/selfsigned.key
+        size: 4096
+        mode: 0600
+        owner: root
+        group: root
+      tags: ssl
+      become: yes
 
-- name: Security hardening
+    - name: Generate self-signed certificate
+      community.crypto.x509_certificate:
+        path: /etc/ssl/certs/selfsigned.crt
+        privatekey_path: /etc/ssl/private/selfsigned.key
+        provider: selfsigned
+        selfsigned_digest: sha256
+        selfsigned_notBefore: "{{ ansible_date_time.iso8601 }}"
+        selfsigned_notAfter: "+365d"
+        subject:
+          C: RU
+          ST: SPb
+          L: Saint-Petersburg
+          O: Example Org
+          OU: IT Department
+          CN: "{{ nginx_domains[0] }}"
+        subject_alt_name:
+          - "DNS:{{ item }}"
+      loop: "{{ nginx_domains }}"
+      tags: ssl
+      notify: Restart Nginx
+      become: yes
+
+- name: Update Nginx SSL configuration
   block:
-    - name: Configure admin access restrictions
-      ansible.builtin.blockinfile:
-        path: "/etc/nginx/sites-available/{{ nginx_domains[0] }}.conf"
-        block: |
-          location /admin {
-            allow {{ admin_network }};
-            deny all;
-          }
-      notify: Reload Nginx
-      tags: security
-
-    - name: Configure logging rotation
+    - name: Configure SSL params
       ansible.builtin.template:
-        src: logrotate.conf.j2
-        dest: "/etc/logrotate.d/nginx-sites"
+        src: ssl_params.conf.j2
+        dest: /etc/nginx/snippets/ssl_params.conf
         owner: root
         group: root
         mode: 0644
-      tags: logging
+      notify: Restart Nginx
+      become: yes
+
+    - name: Update virtual hosts for SSL
+      ansible.builtin.template:
+        src: sites.conf.j2
+        dest: "/etc/nginx/sites-available/{{ item }}.conf"
+        owner: root
+        group: root
+        mode: 0644
+      loop: "{{ nginx_domains }}"
+      notify: Restart Nginx
+      become: yes
