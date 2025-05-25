@@ -40,6 +40,37 @@
 
 - name: Nginx configuration
   block:
+    - name: Install Nginx package
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: yes
+      tags: nginx
+      become: yes
+
+    - name: Create Nginx config directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+      loop:
+        - /etc/nginx/sites-available
+        - /etc/nginx/sites-enabled
+      tags: nginx
+      become: yes
+
+    - name: Update Nginx main config
+      ansible.builtin.lineinfile:
+        path: /etc/nginx/nginx.conf
+        regexp: 'include /etc/nginx/sites-enabled/\*;'
+        line: 'include /etc/nginx/sites-enabled/*.conf;'
+        backrefs: yes
+      notify: Reload Nginx
+      tags: nginx
+      become: yes
+
     - name: Deploy virtual hosts configurations
       ansible.builtin.template:
         src: sites.conf.j2
@@ -52,15 +83,7 @@
         domain: "{{ item }}"
       notify: Reload Nginx
       tags: nginx
-
-    - name: Enable virtual hosts
-      ansible.builtin.file:
-        src: "/etc/nginx/sites-available/{{ item }}.conf"
-        dest: "/etc/nginx/sites-enabled/{{ item }}.conf"
-        state: link
-      loop: "{{ nginx_domains }}"
-      notify: Reload Nginx
-      tags: nginx
+      become: yes
 
 - name: SSL management
   block:

@@ -1,11 +1,11 @@
 server {
     listen 80;
     server_name {{ item }};
-    root /var/www/{{ domain.split('.')[0] }};
+    root /var/www/{{ item.split('.')[0] }};
     index index.html;
 
-    access_log /var/log/nginx/sites/{{ domain }}_access.log;
-    error_log /var/log/nginx/sites/{{ domain }}_error.log;
+    access_log /var/log/nginx/sites/{{ item }}_access.log;
+    error_log /var/log/nginx/sites/{{ item }}_error.log;
 
     location / {
         try_files $uri $uri/ =404;
