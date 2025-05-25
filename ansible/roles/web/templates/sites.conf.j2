@@ -1,6 +1,6 @@
 server {
     listen 80;
-    server_name {{ domain }};
+    server_name {{ item }};
     root /var/www/{{ domain.split('.')[0] }};
     index index.html;
 

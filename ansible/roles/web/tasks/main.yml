@@ -48,6 +48,8 @@
         group: root
         mode: 0644
       loop: "{{ nginx_domains }}"
+      vars:
+        domain: "{{ item }}"
       notify: Reload Nginx
       tags: nginx
 
