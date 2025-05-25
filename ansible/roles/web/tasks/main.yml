@@ -124,7 +124,7 @@
           - "DNS:{{ item }}"
       loop: "{{ nginx_domains }}"
       tags: ssl
-      notify: Restart Nginx
+      notify: Reload Nginx
       become: yes
 
 - name: Update Nginx SSL configuration
@@ -136,7 +136,7 @@
         owner: root
         group: root
         mode: 0644
-      notify: Restart Nginx
+      notify: Reload Nginx
       become: yes
 
     - name: Update virtual hosts for SSL
@@ -147,5 +147,5 @@
         group: root
         mode: 0644
       loop: "{{ nginx_domains }}"
-      notify: Restart Nginx
+      notify: Reload Nginx
       become: yes
