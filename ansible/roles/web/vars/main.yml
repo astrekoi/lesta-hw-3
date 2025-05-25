@@ -1,0 +1,13 @@
+web_directories:
+  - /var/www/site1
+  - /var/www/site2
+  - /var/log/nginx/sites
+  - /var/www/main
+
+nginx_domains:
+  - site1.example.com
+  - site2.example.com
+
+web_root: /var/www
+certbot_email: admin@example.com
+admin_network: 192.168.1.0/24

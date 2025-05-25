@@ -1,0 +1,101 @@
+---
+- name: Web infrastructure deployment
+  block:
+    - name: Create web directories structure
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+      loop: "{{ web_directories }}"
+      tags: directories
+
+    - name: Deploy site content
+      block:
+        - name: Install site1 content
+          ansible.builtin.template:
+            src: site1_index.html.j2
+            dest: "{{ web_root }}/site1/index.html"
+            owner: www-data
+            group: www-data
+            mode: 0644
+
+        - name: Install site2 content
+          ansible.builtin.template:
+            src: site2_index.html.j2
+            dest: "{{ web_root }}/site2/index.html"
+            owner: www-data
+            group: www-data
+            mode: 0644
+
+        - name: Create main portal page
+          ansible.builtin.template:
+            src: main_page.html.j2
+            dest: "{{ web_root }}/main/index.html"
+            owner: www-data
+            group: www-data
+            mode: 0644
+      tags: content
+
+- name: Nginx configuration
+  block:
+    - name: Deploy virtual hosts configurations
+      ansible.builtin.template:
+        src: sites.conf.j2
+        dest: "/etc/nginx/sites-available/{{ item }}.conf"
+        owner: root
+        group: root
+        mode: 0644
+      loop: "{{ nginx_domains }}"
+      notify: Reload Nginx
+      tags: nginx
+
+    - name: Enable virtual hosts
+      ansible.builtin.file:
+        src: "/etc/nginx/sites-available/{{ item }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ item }}.conf"
+        state: link
+      loop: "{{ nginx_domains }}"
+      notify: Reload Nginx
+      tags: nginx
+
+- name: SSL management
+  block:
+    - name: Install certbot package
+      ansible.builtin.apt:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: present
+        update_cache: yes
+      tags: certbot
+
+    - name: Obtain SSL certificates
+      ansible.builtin.command: "certbot --nginx -d {{ domains }} --non-interactive --agree-tos -m {{ certbot_email }}"
+      vars:
+        domains: "{{ nginx_domains | join(',') }}"
+      notify: Reload Nginx
+      tags: certbot
+
+- name: Security hardening
+  block:
+    - name: Configure admin access restrictions
+      ansible.builtin.blockinfile:
+        path: "/etc/nginx/sites-available/{{ nginx_domains[0] }}.conf"
+        block: |
+          location /admin {
+            allow {{ admin_network }};
+            deny all;
+          }
+      notify: Reload Nginx
+      tags: security
+
+    - name: Configure logging rotation
+      ansible.builtin.template:
+        src: logrotate.conf.j2
+        dest: "/etc/logrotate.d/nginx-sites"
+        owner: root
+        group: root
+        mode: 0644
+      tags: logging
