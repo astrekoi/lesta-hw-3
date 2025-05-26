@@ -106,23 +106,31 @@
       tags: ssl
       become: yes
 
+    - name: Create certificate signing request (CSR) for self-signed certificate
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: /etc/ssl/private/selfsigned.key
+        common_name: "{{ nginx_domains[0] }}"
+        country_name: RU
+        state_or_province_name: SPb
+        locality_name: Saint-Petersburg
+        organization_name: Example Org
+        organizational_unit_name: IT Department
+        subject_alt_name: "{{ nginx_domains | map('regex_replace', '^(.*)$', 'DNS:\\1') | list }}"
+      register: csr
+      tags: ssl
+      become: yes
+
     - name: Generate unified certificate for all domains
       community.crypto.x509_certificate:
         path: /etc/ssl/certs/selfsigned.crt
+        csr_content: "{{ csr.csr }}"
         privatekey_path: /etc/ssl/private/selfsigned.key
         provider: selfsigned
         selfsigned_digest: sha256
         selfsigned_not_after: "+365d"
-        subject:
-          C: RU
-          ST: SPb
-          L: Saint-Petersburg
-          O: Example Org
-          OU: IT Department
-          CN: "{{ nginx_domains[0] }}"
-        subject_alt_name: 
-          - "DNS:{{ item }}"
-      loop: "{{ nginx_domains }}"
+        mode: 0644
+        owner: root
+        group: root
       tags: ssl
       notify: Reload Nginx
       become: yes
