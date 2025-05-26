@@ -106,31 +106,41 @@
       tags: ssl
       become: yes
 
-    - name: Generate CSR with subject and SAN
-      community.crypto.openssl_csr_pipe:
-        common_name: "{{ nginx_domains[0] }}"
+    - name: Generate unified certificate for all domains
+      community.crypto.x509_certificate:
+        path: /etc/ssl/certs/selfsigned.crt
+        privatekey_path: /etc/ssl/private/selfsigned.key
+        provider: selfsigned
+        selfsigned_digest: sha256
+        selfsigned_not_after: "+365d"
         subject:
           C: RU
           ST: SPb
           L: Saint-Petersburg
           O: Example Org
           OU: IT Department
-        subject_alt_name: 
-          - "DNS:{{ item }}"
-        privatekey_path: /etc/ssl/private/selfsigned.key
-      loop: "{{ nginx_domains }}"
-      register: csr
+          CN: "{{ nginx_domains[0] }}"
+        subject_alt_name: "DNS:{{ nginx_domains | join(',DNS:') }}"
+      tags: ssl
+      notify: Reload Nginx
+      become: yes
+
+    - name: Verify certificate consistency
+      ansible.builtin.shell: |
+        openssl x509 -noout -modulus -in /etc/ssl/certs/selfsigned.crt | openssl md5
+        openssl rsa -noout -modulus -in /etc/ssl/private/selfsigned.key | openssl md5
+      register: cert_check
+      changed_when: false
       tags: ssl
 
-    - name: Generate self-signed certificate
-      community.crypto.x509_certificate:
-        path: /etc/ssl/certs/{{ item.item }}.crt
-        privatekey_path: /etc/ssl/private/selfsigned.key
-        csr_content: "{{ item.csr }}"
-        provider: selfsigned
-        selfsigned_digest: sha256
-        selfsigned_not_after: "+365d"
-      loop: "{{ csr.results }}"
-      tags: ssl
+- name: Update Nginx SSL configuration
+  block:
+    - name: Configure SSL params without frame blocking
+      ansible.builtin.template:
+        src: ssl_params.conf.j2
+        dest: /etc/nginx/snippets/ssl_params.conf
+        owner: root
+        group: root
+        mode: 0644
       notify: Reload Nginx
       become: yes

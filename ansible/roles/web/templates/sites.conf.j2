@@ -14,8 +14,8 @@ server {
     listen 443 ssl http2;
     server_name {{ item }};
     
-    ssl_certificate /etc/ssl/certs/{{ item }}.crt;
-    ssl_certificate_key /etc/ssl/private/{{ item }}.key;
+    ssl_certificate /etc/ssl/certs/selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/selfsigned.key;
     include /etc/nginx/snippets/ssl_params.conf;
 
     root /var/www/{{ item.split('.')[0] }};
@@ -25,7 +25,6 @@ server {
         try_files $uri $uri/ =404;
     }
 
-    location ~ /\.ht {
-        deny all;
-    }
+    # Allow iframe embedding
+    add_header X-Frame-Options "ALLOW-FROM https://{{ nginx_domains | join(', https://') }}";
 }
