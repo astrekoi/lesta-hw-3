@@ -109,6 +109,13 @@
       tags: nginx
       become: yes
 
+    - name: Verify no default.conf references remain
+      ansible.builtin.shell: grep -c "default\.conf" /etc/nginx/nginx.conf || echo "0"
+      register: default_conf_count
+      changed_when: false
+      tags: nginx
+      become: yes
+
     - name: Create empty default.conf as fallback
       ansible.builtin.file:
         path: "/etc/nginx/sites-enabled/default.conf"
