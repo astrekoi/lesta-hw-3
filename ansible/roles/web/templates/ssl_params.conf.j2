@@ -4,10 +4,9 @@ ssl_ciphers "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECD
 ssl_ecdh_curve secp384r1;
 ssl_session_cache shared:SSL:10m;
 ssl_session_tickets off;
-ssl_stapling on;
-ssl_stapling_verify on;
+#ssl_stapling on;
+#ssl_stapling_verify on;
 resolver 8.8.8.8 8.8.4.4 valid=300s;
 resolver_timeout 5s;
 add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload";
 add_header X-Content-Type-Options nosniff;
-{# Removed X-Frame-Options to allow iframe embedding #}

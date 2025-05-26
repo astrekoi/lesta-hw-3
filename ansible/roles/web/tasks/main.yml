@@ -36,6 +36,14 @@
             owner: www-data
             group: www-data
             mode: 0644
+
+        - name: Create admin panel page
+          ansible.builtin.template:
+            src: admin_index.html.j2
+            dest: "{{ web_root }}/admin/index.html"
+            owner: www-data
+            group: www-data
+            mode: 0644
       tags: content
 
 - name: Nginx configuration
@@ -68,95 +76,28 @@
       loop:
         - /etc/nginx/sites-enabled/default
         - /etc/nginx/sites-available/default
+        - /etc/nginx/sites-enabled/default.conf
+        - /etc/nginx/sites-available/default.conf
       tags: nginx
       become: yes
 
-    - name: Check current nginx.conf include directive
-      ansible.builtin.shell: grep -n "include.*sites-enabled" /etc/nginx/nginx.conf || true
-      register: nginx_include_check
-      changed_when: false
-      tags: nginx
-      become: yes
-
-    - name: Update Nginx main config
-      ansible.builtin.lineinfile:
+    - name: Ensure correct nginx.conf include
+      ansible.builtin.replace:
         path: /etc/nginx/nginx.conf
-        regexp: '^\s*include\s+/etc/nginx/sites-enabled/\*.*'
-        line: '        include /etc/nginx/sites-enabled/*.conf;'
-        backrefs: no
+        regexp: '^\s*include\s+/etc/nginx/sites-enabled/.*$'
+        replace: '        include /etc/nginx/sites-enabled/*.conf;'
       notify: Reload Nginx
       tags: nginx
       become: yes
 
-    - name: Debug nginx.conf before cleanup
-      ansible.builtin.shell: grep -n "default.conf\|sites-enabled" /etc/nginx/nginx.conf || true
-      register: nginx_debug_before
-      changed_when: false
-      tags: nginx
-      become: yes
-
-    - name: Display nginx.conf include directives before cleanup
-      ansible.builtin.debug:
-        var: nginx_debug_before.stdout_lines
-      tags: nginx
-
-    - name: Remove any default.conf references (improved)
+    - name: Configure local domain resolution
       ansible.builtin.lineinfile:
-        path: /etc/nginx/nginx.conf
-        regexp: '^\s*include\s+/etc/nginx/sites-enabled/default\.conf;?\s*$'
-        state: absent
-      notify: Reload Nginx
-      tags: nginx
-      become: yes
-
-    - name: Verify no default.conf references remain
-      ansible.builtin.shell: grep -c "default\.conf" /etc/nginx/nginx.conf || echo "0"
-      register: default_conf_count
-      changed_when: false
-      tags: nginx
-      become: yes
-
-    - name: Create empty default.conf as fallback
-      ansible.builtin.file:
-        path: "/etc/nginx/sites-available/default.conf"
-        state: touch
-        owner: root
-        group: root
-        mode: 0644
-      when: default_conf_count.stdout != "0"
-      tags: nginx
-      become: yes
-
-    - name: Enable default site fallback
-      ansible.builtin.file:
-        src: "/etc/nginx/sites-available/default.conf"
-        dest: "/etc/nginx/sites-enabled/default.conf"
-        state: link
-      when: default_conf_count.stdout != "0"
-      tags: nginx
-      become: yes
-
-    - name: Ensure only wildcard include exists
-      ansible.builtin.lineinfile:
-        path: /etc/nginx/nginx.conf
-        regexp: '^\s*include\s+/etc/nginx/sites-enabled/\*\.conf;?\s*$'
-        line: '        include /etc/nginx/sites-enabled/*.conf;'
+        path: /etc/hosts
+        line: "127.0.0.1 {{ item }}"
         state: present
-      notify: Reload Nginx
+      loop: "{{ nginx_domains }}"
       tags: nginx
       become: yes
-
-    - name: Debug nginx.conf after cleanup
-      ansible.builtin.shell: grep -n "default.conf\|sites-enabled" /etc/nginx/nginx.conf || true
-      register: nginx_debug_after
-      changed_when: false
-      tags: nginx
-      become: yes
-
-    - name: Display nginx.conf include directives after cleanup
-      ansible.builtin.debug:
-        var: nginx_debug_after.stdout_lines
-      tags: nginx
 
     - name: Deploy default server configuration
       ansible.builtin.template:
@@ -177,8 +118,6 @@
         group: root
         mode: 0644
       loop: "{{ nginx_domains }}"
-      vars:
-        domain: "{{ item }}"
       notify: Reload Nginx
       tags: nginx
       become: yes

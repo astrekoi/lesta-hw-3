@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f9f9f9; 
+        }
+        .panel { 
+            background: white; 
+            padding: 20px; 
+            border: 1px solid #ddd; 
+            max-width: 600px; 
+        }
+        h1 { color: #333; }
+        .warning { 
+            background: #fff3cd; 
+            padding: 10px; 
+            border-left: 4px solid #ffc107; 
+            margin: 15px 0; 
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h1>Admin Panel</h1>
+        
+        <div class="warning">
+            <strong>Restricted Access</strong><br>
+            Allowed from: {{ admin_network }}
+        </div>
+        
+        <h3>Server Info</h3>
+        <p><strong>Server:</strong> Nginx</p>
+        <p><strong>SSL:</strong> Enabled</p>
+        <p><strong>Sites:</strong> {{ nginx_domains | join(', ') }}</p>
+    </div>
+</body>
+</html>
