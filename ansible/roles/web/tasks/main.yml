@@ -118,11 +118,20 @@
 
     - name: Create empty default.conf as fallback
       ansible.builtin.file:
-        path: "/etc/nginx/sites-enabled/default.conf"
+        path: "/etc/nginx/sites-available/default.conf"
         state: touch
         owner: root
         group: root
         mode: 0644
+      when: default_conf_count.stdout != "0"
+      tags: nginx
+      become: yes
+
+    - name: Enable default site fallback
+      ansible.builtin.file:
+        src: "/etc/nginx/sites-available/default.conf"
+        dest: "/etc/nginx/sites-enabled/default.conf"
+        state: link
       when: default_conf_count.stdout != "0"
       tags: nginx
       become: yes
