@@ -88,14 +88,59 @@
       tags: nginx
       become: yes
 
-    - name: Remove any default.conf references
+    - name: Debug nginx.conf before cleanup
+      ansible.builtin.shell: grep -n "default.conf\|sites-enabled" /etc/nginx/nginx.conf || true
+      register: nginx_debug_before
+      changed_when: false
+      tags: nginx
+      become: yes
+
+    - name: Display nginx.conf include directives before cleanup
+      ansible.builtin.debug:
+        var: nginx_debug_before.stdout_lines
+      tags: nginx
+
+    - name: Remove any default.conf references (improved)
       ansible.builtin.lineinfile:
         path: /etc/nginx/nginx.conf
-        regexp: '.*default\.conf.*'
+        regexp: '^\s*include\s+/etc/nginx/sites-enabled/default\.conf;?\s*$'
         state: absent
       notify: Reload Nginx
       tags: nginx
       become: yes
+
+    - name: Create empty default.conf as fallback
+      ansible.builtin.file:
+        path: "/etc/nginx/sites-enabled/default.conf"
+        state: touch
+        owner: root
+        group: root
+        mode: 0644
+      when: default_conf_count.stdout != "0"
+      tags: nginx
+      become: yes
+
+    - name: Ensure only wildcard include exists
+      ansible.builtin.lineinfile:
+        path: /etc/nginx/nginx.conf
+        regexp: '^\s*include\s+/etc/nginx/sites-enabled/\*\.conf;?\s*$'
+        line: '        include /etc/nginx/sites-enabled/*.conf;'
+        state: present
+      notify: Reload Nginx
+      tags: nginx
+      become: yes
+
+    - name: Debug nginx.conf after cleanup
+      ansible.builtin.shell: grep -n "default.conf\|sites-enabled" /etc/nginx/nginx.conf || true
+      register: nginx_debug_after
+      changed_when: false
+      tags: nginx
+      become: yes
+
+    - name: Display nginx.conf include directives after cleanup
+      ansible.builtin.debug:
+        var: nginx_debug_after.stdout_lines
+      tags: nginx
 
     - name: Deploy default server configuration
       ansible.builtin.template:
