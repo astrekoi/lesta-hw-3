@@ -71,12 +71,28 @@
       tags: nginx
       become: yes
 
+    - name: Check current nginx.conf include directive
+      ansible.builtin.shell: grep -n "include.*sites-enabled" /etc/nginx/nginx.conf || true
+      register: nginx_include_check
+      changed_when: false
+      tags: nginx
+      become: yes
+
     - name: Update Nginx main config
       ansible.builtin.lineinfile:
         path: /etc/nginx/nginx.conf
-        regexp: 'include /etc/nginx/sites-enabled/\*;'
-        line: 'include /etc/nginx/sites-enabled/*.conf;'
-        backrefs: yes
+        regexp: '^\s*include\s+/etc/nginx/sites-enabled/\*.*'
+        line: '        include /etc/nginx/sites-enabled/*.conf;'
+        backrefs: no
+      notify: Reload Nginx
+      tags: nginx
+      become: yes
+
+    - name: Remove any default.conf references
+      ansible.builtin.lineinfile:
+        path: /etc/nginx/nginx.conf
+        regexp: '.*default\.conf.*'
+        state: absent
       notify: Reload Nginx
       tags: nginx
       become: yes
