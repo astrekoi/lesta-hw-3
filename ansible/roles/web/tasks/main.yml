@@ -120,7 +120,9 @@
           O: Example Org
           OU: IT Department
           CN: "{{ nginx_domains[0] }}"
-        subject_alt_name: "DNS:{{ nginx_domains | join(',DNS:') }}"
+        subject_alt_name: 
+          - "DNS:{{ item }}"
+      loop: "{{ nginx_domains }}"
       tags: ssl
       notify: Reload Nginx
       become: yes
